@@ -14,24 +14,49 @@ WINDOW_WIDTH, WINDOW_HEIGHT = 400, 600
 display_surface = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption('Car Game')
 
-# Backgrounds
-background = pygame.image.load('../assets/AnimatedStreet.png').convert_alpha()
-
 # Fonts
 verdana_font = pygame.font.SysFont('Verdana', 60)
 verdana_font_small = pygame.font.SysFont('Verdana', 20)
 
 # Variables
-speed = 1
+enemy_speed = 8
 running = True
-score = 0
 game_over = verdana_font.render('Game Over', True, 'black')
+
+# Audio
+pygame.mixer.music.load('D:/Programming/Python/Games/All_Games/CarDodge/assets/background.wav')
+pygame.mixer.music.play(-1)
 
 # Frames
 frames_per_second = pygame.time.Clock()
 fps = 60
 
 # ---------- Sprites/Surfaces ----------
+#  Background
+class Background():
+    def __init__(self):
+        self.bgimage = pygame.image.load('../assets/AnimatedStreet.png').convert_alpha()
+        self.rectBGimg = self.bgimage.get_rect()
+
+        self.bgY1 = 0
+        self.bgX1 = 0
+        self.bgY2 = -self.rectBGimg.height
+        self.bgX2 = 0
+
+        self.moving_speed = 5
+    
+    def update(self):
+        self.bgY1 += self.moving_speed
+        self.bgY2 += self.moving_speed
+        if self.bgY1 >= self.rectBGimg.height:
+            self.bgY1 = -self.rectBGimg.height
+        if self.bgY2 >= self.rectBGimg.height:
+            self.bgY2 = -self.rectBGimg.height
+
+    def render(self):
+      display_surface.blit(self.bgimage, (self.bgX1, self.bgY1))
+      display_surface.blit(self.bgimage, (self.bgX2, self.bgY2))
+
 # Player Class Sprite
 class Player(pygame.sprite.Sprite):
     def __init__(self):
@@ -39,6 +64,7 @@ class Player(pygame.sprite.Sprite):
         self.image = pygame.image.load('../assets/Player.png').convert_alpha()
         self.rect = self.image.get_rect()
         self.rect.center = (160, 520)
+        self.score = 0
 
     def move(self):
         pressed_keys = pygame.key.get_pressed()
@@ -48,6 +74,9 @@ class Player(pygame.sprite.Sprite):
         if self.rect.right < WINDOW_WIDTH:
             if pressed_keys[K_RIGHT]:
                 self.rect.move_ip(5, 0)
+    
+    def update_score(self):
+        self.score += 1
 
 # Enemy Class Sprite
 class Enemy(pygame.sprite.Sprite):
@@ -58,15 +87,16 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.center = (random.randint(40, WINDOW_WIDTH-40), 0)
 
     def move(self):
-        self.rect.move_ip(0, speed)
+        self.rect.move_ip(0, enemy_speed)
         if (self.rect.bottom > 600):
             self.rect.top = 0
             self.rect.center = (random.randint(30, 370), 0)
+            P1.update_score()
 
 # ---------- Custom User Events ----------
 # Increase Speed
 INC_SPEED = pygame.USEREVENT + 1
-pygame.time.set_timer(INC_SPEED, 2000)
+pygame.time.set_timer(INC_SPEED, 4000)
 
 # ---------- Creation/Initialisation ----------
 # Create Player and Enemy Objects
@@ -83,13 +113,18 @@ all_sprites = pygame.sprite.Group()
 all_sprites.add(E1)
 all_sprites.add(P1)
 
+# Backgrounds
+back_ground = Background()
+
 # ---------- Game Loop ----------
 while running:
-    display_surface.fill('white')
-    display_surface.blit(background, (0, 0))
+    frames_per_second.tick(fps)
+    display_surface.fill('#c3c3c3')
+    back_ground.update()
+    back_ground.render()
 
     # Render & display fonts
-    scores = verdana_font_small.render(str(score), True, 'black')
+    scores = verdana_font_small.render(str(P1.score), True, 'black')
     display_surface.blit(scores, (10, 10))
 
     # Event Loop: Check if any events occuring this loop
@@ -99,7 +134,7 @@ while running:
             sys.exit()
         
         if event.type == INC_SPEED:
-            speed += 1
+            enemy_speed += .5
 
     # Move and redraw all sprites
     for sprite in all_sprites:
@@ -108,9 +143,10 @@ while running:
     
     # Collision detection and management
     if pygame.sprite.spritecollideany(P1, enemies):
+        pygame.mixer.music.stop()
         # Play crash sound effect
         pygame.mixer.Sound.play(pygame.mixer.Sound('../assets/crash.wav'))
-        time.sleep(0.5)
+        # time.sleep(0.5)
 
         # draw game over font and turn screen red
         display_surface.fill('red')
@@ -127,4 +163,3 @@ while running:
         sys.exit()
 
     pygame.display.update()
-    frames_per_second.tick(fps)
